@@ -51,6 +51,11 @@ export function QuickReplies({ onSelect }) {
     e.preventDefault();
     const cleanPhrase = newPhrase.trim();
 
+    if (cleanPhrase.length > 120) {
+      showToast("Phrase is too long (max 120 characters)", "error");
+      return;
+    }
+
     if (!cleanPhrase) {
       showToast("Phrase cannot be empty", "error");
       return;
@@ -166,6 +171,7 @@ export function QuickReplies({ onSelect }) {
               type="text"
               value={newPhrase}
               onChange={(e) => setNewPhrase(e.target.value)}
+              maxLength={120}
               placeholder="New reply..."
               autoFocus
               className="bg-transparent text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none dark:text-neutral-100 dark:placeholder:text-neutral-500 w-28"
