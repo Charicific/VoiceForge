@@ -13,7 +13,7 @@ const SHORTCUTS = [
   {
     context: "Compose",
     shortcuts: [
-      { keys: ["Ctrl", "Enter"], description: "Speak typed text" },
+      { keys: ["Ctrl / ⌘", "Enter"], description: "Speak typed text" },
     ],
   },
   {
@@ -31,47 +31,74 @@ const SHORTCUTS = [
   },
 ];
 
+const HEADING_ID = "keyboard-shortcuts-heading";
+
 export default function KeyboardShortcutsModal({ isOpen, onClose }) {
   const modalRef = React.useRef(null);
+  const previousFocusRef = React.useRef(null);
 
-React.useEffect(() => {
-  if (!isOpen) return;
+  React.useEffect(() => {
+    if (!isOpen) return;
 
-  const focusableSelectors = [
-    'button', '[href]', 'input', 'select', 'textarea',
-    '[tabindex]:not([tabindex="-1"])'
-  ].join(', ');
+    // Save previously focused element
+    previousFocusRef.current = document.activeElement;
 
-  function handleKeyDown(event) {
-    if (event.key === "Escape") {
-      onClose();
-      return;
+    const focusableSelectors = [
+      "button",
+      "[href]",
+      "input",
+      "select",
+      "textarea",
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(", ");
+
+    function getFocusable() {
+      if (!modalRef.current) return [];
+      return Array.from(modalRef.current.querySelectorAll(focusableSelectors));
     }
-    if (event.key === "Tab" && modalRef.current) {
-      const focusable = Array.from(modalRef.current.querySelectorAll(focusableSelectors));
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey) {
-        if (document.activeElement === first || document.activeElement === modalRef.current) {
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key === "Tab" && modalRef.current) {
+        const focusable = getFocusable();
+        if (focusable.length === 0) {
           event.preventDefault();
-          (last ?? modalRef.current).focus();
+          modalRef.current.focus();
+          return;
         }
-      } else {
-        if (document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey) {
+          if (
+            document.activeElement === first ||
+            document.activeElement === modalRef.current
+          ) {
+            event.preventDefault();
+            (last ?? modalRef.current).focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            event.preventDefault();
+            (first ?? modalRef.current).focus();
+          }
         }
       }
     }
-  }
 
-  window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
 
-  // Move focus into modal on open
-  modalRef.current?.focus();
+    // Move focus into modal on open
+    modalRef.current?.focus();
 
-  return () => window.removeEventListener("keydown", handleKeyDown);
-}, [isOpen, onClose]);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      // Restore focus to previously focused element on close
+      previousFocusRef.current?.focus();
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -79,7 +106,7 @@ React.useEffect(() => {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Keyboard shortcuts"
+      aria-labelledby={HEADING_ID}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
     >
       {/* Backdrop */}
@@ -90,13 +117,19 @@ React.useEffect(() => {
       />
 
       {/* Modal */}
-      <div ref={modalRef} tabIndex={-1} className="relative w-full max-w-md rounded-xl border border-ink/10 bg-white shadow-lg dark:border-border dark:bg-surface outline-none">
-
+      <div
+        ref={modalRef}
+        tabIndex={-1}
+        className="relative w-full max-w-md rounded-xl border border-ink/10 bg-white shadow-lg outline-none dark:border-border dark:bg-surface"
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-ink/10 px-6 py-4 dark:border-border">
           <div className="flex items-center gap-2">
             <Keyboard size={18} aria-hidden="true" className="text-ink dark:text-neutral-200" />
-            <h2 className="text-base font-semibold text-ink dark:text-neutral-100">
+            <h2
+              id={HEADING_ID}
+              className="text-base font-semibold text-ink dark:text-neutral-100"
+            >
               Keyboard Shortcuts
             </h2>
           </div>
@@ -119,7 +152,10 @@ React.useEffect(() => {
               </p>
               <div className="flex flex-col gap-2">
                 {group.shortcuts.map((shortcut) => (
-                  <div key={shortcut.description} className="flex items-center justify-between gap-4">
+                  <div
+                    key={`${group.context}-${shortcut.keys.join("+")}-${shortcut.description}`}
+                    className="flex items-center justify-between gap-4"
+                  >
                     <span className="text-sm text-ink/70 dark:text-neutral-300">
                       {shortcut.description}
                     </span>
@@ -140,20 +176,23 @@ React.useEffect(() => {
           ))}
         </div>
 
-        {/* Footer hint */}
-        <div className="border-t border-ink/10 px-6 py-3 dark:border-border flex items-center justify-between">
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t border-ink/10 px-6 py-3 dark:border-border">
           <p className="text-xs text-ink/40 dark:text-neutral-500">
-            Press <kbd className="rounded border border-ink/15 bg-ink/5 px-1 font-mono text-[10px] dark:border-border dark:bg-white/5">?</kbd> anywhere to open
+            Press{" "}
+            <kbd className="rounded border border-ink/15 bg-ink/5 px-1 font-mono text-[10px] dark:border-border dark:bg-white/5">
+              ?
+            </kbd>{" "}
+            anywhere to open
           </p>
           <button
             type="button"
             onClick={onClose}
-            className="text-xs text-ink/50 hover:text-ink dark:text-neutral-400 dark:hover:text-neutral-100 transition-colors duration-150"
+            className="text-xs text-ink/50 transition-colors duration-150 hover:text-ink dark:text-neutral-400 dark:hover:text-neutral-100"
           >
             Close
           </button>
-        </div> 
-
+        </div>
       </div>
     </div>
   );

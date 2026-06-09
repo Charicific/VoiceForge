@@ -43,13 +43,22 @@ export default function App() {
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   React.useEffect(() => {
   function handleKeyDown(event) {
-    if (event.key === "?" && !["INPUT", "TEXTAREA"].includes(event.target.tagName)) {
+    if (
+      event.key === "?" &&
+      !["INPUT", "TEXTAREA"].includes(event.target.tagName) &&
+      !event.target.isContentEditable &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey
+    ) {
+      if (shortcutsOpen) return;
       setShortcutsOpen(true);
     }
   }
   window.addEventListener("keydown", handleKeyDown);
   return () => window.removeEventListener("keydown", handleKeyDown);
-}, []);
+}, [shortcutsOpen]);
+    
 
   function selectTab(tab) {
     if (!tabIds.has(tab)) return;
