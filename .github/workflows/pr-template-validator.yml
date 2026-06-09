@@ -176,11 +176,30 @@ jobs:
                 };
               }
 
+              // Fetch existing reviews to avoid re-requesting from mentors who have already reviewed
+              let reviews = [];
+              try {
+                reviews = await github.paginate(github.rest.pulls.listReviews, {
+                  owner,
+                  repo,
+                  pull_number: issue_number,
+                  per_page: 100
+                });
+              } catch (error) {
+                core.warning(`Could not fetch reviews: ${error.message}`);
+              }
+              const reviewersWhoReviewed = new Set(
+                reviews
+                  .map(review => review.user?.login?.toLowerCase())
+                  .filter(Boolean)
+              );
+
               const existingReviewers = new Set((pr.requested_reviewers || []).map(reviewer => reviewer.login.toLowerCase()));
               const existingTeams = new Set((pr.requested_teams || []).map(team => team.slug.toLowerCase()));
               const reviewers = targets.reviewers
                 .filter(reviewer => reviewer.toLowerCase() !== username.toLowerCase())
-                .filter(reviewer => !existingReviewers.has(reviewer.toLowerCase()));
+                .filter(reviewer => !existingReviewers.has(reviewer.toLowerCase()))
+                .filter(reviewer => !reviewersWhoReviewed.has(reviewer.toLowerCase()));
               const team_reviewers = targets.teamReviewers
                 .filter(team => !existingTeams.has(team.toLowerCase()));
 
