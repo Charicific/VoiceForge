@@ -7,10 +7,12 @@ import VirtualCamera from "../components/VirtualCamera.jsx";
 import useTTS from "../hooks/useTTS.js";
 import useVirtualCamera from "../hooks/useVirtualCamera.js";
 import { getActiveVoiceProfile } from "../hooks/useVoiceClone.js";
+import { useToast, ToastContainer } from "../components/useToast.jsx";
 
 export default function Call() {
   const [webcamStream, setWebcamStream] = React.useState(null);
   const [cameraError, setCameraError] = React.useState("");
+  const { toasts, showToast } = useToast();
   const [isSpeaking, setIsSpeaking] = React.useState(false);
   const canvasRef = React.useRef(null);
   const localVideoRef = React.useRef(null);
@@ -108,6 +110,7 @@ export default function Call() {
         setCameraError("");
       } catch (webcamError) {
         setCameraError(webcamError?.message || String(webcamError));
+        showToast("Camera access failed", "error");
       }
     }
     openCamera();
@@ -122,6 +125,7 @@ export default function Call() {
       await speak({ text, voiceId: activeProfile.voice_id });
     } catch (err) {
       console.error("TTS streaming error:", err);
+      showToast("Speech generation failed", "error");
     }
   }
 
@@ -321,6 +325,7 @@ export default function Call() {
           {error}
         </p>
       )}
+      <ToastContainer toasts={toasts} />
     </div>
   );
 }
